@@ -1,0 +1,46 @@
+<!doctype html>
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
+    <style>
+      html, body { margin: 0; overflow: hidden; }
+    </style>
+  </head>
+
+  <body>
+    <a-scene
+      mindar-image="imageTargetSrc: ./cara_utbot.mind;"
+      vr-mode-ui="enabled: false"
+      device-orientation-permission-ui="enabled: false"
+    >
+      <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+
+      <!-- Target 0 (si tu .mind tiene 1 sola imagen, es targetIndex: 0) -->
+      <a-entity mindar-image-target="targetIndex: 0">
+        <a-box
+          position="0 0 0"
+          depth="0.25"
+          height="0.25"
+          width="0.25"
+          color="#4CC3D9"
+        ></a-box>
+
+        <!-- una luz suave para que se vea bien -->
+        <a-entity light="type: ambient; intensity: 1.0"></a-entity>
+        <a-entity light="type: directional; intensity: 0.8" position="1 2 1"></a-entity>
+      </a-entity>
+    </a-scene>
+
+    <script>
+      // Debug: ver en consola cuando se detecta / pierde el target
+      const sceneEl = document.querySelector("a-scene");
+      sceneEl.addEventListener("loaded", () => {
+        const target = document.querySelector("[mindar-image-target]");
+        target.addEventListener("targetFound", () => console.log("🎯 UTBot target FOUND"));
+        target.addEventListener("targetLost", () => console.log("❌ UTBot target LOST"));
+      });
+    </script>
+  </body>
+</html>

@@ -39,36 +39,41 @@
       vr-mode-ui="enabled: false"
       device-orientation-permission-ui="enabled: false"
     >
+      <a-assets>
+        <a-asset-item id="carModel" src="./modcarro.glb"></a-asset-item>
+      </a-assets>
+
       <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+
+      <a-light type="ambient" intensity="1"></a-light>
+      <a-light type="directional" intensity="1" position="1 2 1"></a-light>
 
       <!-- Anchor que sigue al target -->
       <a-entity id="targetAnchor" mindar-image-target="targetIndex: 0">
-        <a-box
-          id="trackedCube"
+        <a-gltf-model
+          id="trackedCar"
+          src="#carModel"
           position="0 0 0"
-          depth="0.3"
-          height="0.3"
-          width="0.3"
-          color="red"
-        ></a-box>
+          rotation="0 0 0"
+          scale="0.2 0.2 0.2"
+        ></a-gltf-model>
       </a-entity>
 
-      <!-- Cubo congelado, independiente del target -->
-      <a-box
-        id="frozenCube"
+      <!-- Modelo congelado, independiente del target -->
+      <a-gltf-model
+        id="frozenCar"
+        src="#carModel"
         position="0 0 0"
-        depth="0.3"
-        height="0.3"
-        width="0.3"
-        color="blue"
+        rotation="0 0 0"
+        scale="0.2 0.2 0.2"
         visible="false"
-      ></a-box>
+      ></a-gltf-model>
     </a-scene>
 
     <script>
       const anchor = document.querySelector("#targetAnchor");
-      const trackedCube = document.querySelector("#trackedCube");
-      const frozenCube = document.querySelector("#frozenCube");
+      const trackedCar = document.querySelector("#trackedCar");
+      const frozenCar = document.querySelector("#frozenCar");
       const msg = document.querySelector("#msg");
 
       let alreadyFrozen = false;
@@ -78,28 +83,27 @@
 
         if (alreadyFrozen) return;
 
-        // Esperamos un poquito para que la pose se estabilice
         setTimeout(() => {
           anchor.object3D.updateMatrixWorld(true);
+          trackedCar.object3D.updateMatrixWorld(true);
 
           const worldPos = new THREE.Vector3();
           const worldQuat = new THREE.Quaternion();
           const worldScale = new THREE.Vector3();
 
-          trackedCube.object3D.getWorldPosition(worldPos);
-          trackedCube.object3D.getWorldQuaternion(worldQuat);
-          trackedCube.object3D.getWorldScale(worldScale);
+          trackedCar.object3D.getWorldPosition(worldPos);
+          trackedCar.object3D.getWorldQuaternion(worldQuat);
+          trackedCar.object3D.getWorldScale(worldScale);
 
-          frozenCube.object3D.position.copy(worldPos);
-          frozenCube.object3D.quaternion.copy(worldQuat);
-          frozenCube.object3D.scale.copy(worldScale);
-          frozenCube.setAttribute("visible", true);
+          frozenCar.object3D.position.copy(worldPos);
+          frozenCar.object3D.quaternion.copy(worldQuat);
+          frozenCar.object3D.scale.copy(worldScale);
+          frozenCar.setAttribute("visible", true);
 
-          // Ocultamos el cubo ligado al target
-          trackedCube.setAttribute("visible", false);
+          trackedCar.setAttribute("visible", false);
 
           alreadyFrozen = true;
-          msg.textContent = "Cubo fijado";
+          msg.textContent = "Carro fijado";
         }, 300);
       });
 
@@ -107,7 +111,7 @@
         if (!alreadyFrozen) {
           msg.textContent = "Target perdido";
         } else {
-          msg.textContent = "Cubo sigue visible";
+          msg.textContent = "Carro sigue visible";
         }
       });
     </script>

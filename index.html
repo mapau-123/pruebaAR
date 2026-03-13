@@ -74,20 +74,22 @@
         ></a-gltf-model>
       </a-entity>
 
-      <!-- Modelo congelado -->
-      <a-gltf-model
-        id="frozenCar"
-        src="#carModel"
-        position="0 0 0"
-        rotation="0 0 0"
-        scale="5 5 5"
-        visible="false"
-      ></a-gltf-model>
+      <!-- Wrapper congelado -->
+      <a-entity id="frozenWrapper" visible="false">
+        <a-gltf-model
+          id="frozenCar"
+          src="#carModel"
+          position="0 0 0"
+          rotation="0 0 0"
+          scale="5 5 5"
+        ></a-gltf-model>
+      </a-entity>
     </a-scene>
 
     <script>
       const anchor = document.querySelector("#targetAnchor");
       const trackedCar = document.querySelector("#trackedCar");
+      const frozenWrapper = document.querySelector("#frozenWrapper");
       const frozenCar = document.querySelector("#frozenCar");
       const msg = document.querySelector("#msg");
       const btnReset = document.querySelector("#btnReset");
@@ -96,7 +98,7 @@
       let freezeTimeout = null;
 
       // =========================
-      // CONGELAR MODELO
+      // ANCLAR / CONGELAR
       // =========================
       anchor.addEventListener("targetFound", () => {
         if (alreadyFrozen) return;
@@ -116,13 +118,15 @@
           trackedCar.object3D.getWorldPosition(worldPos);
           trackedCar.object3D.getWorldQuaternion(worldQuat);
 
-          frozenCar.object3D.position.copy(worldPos);
-          frozenCar.object3D.quaternion.copy(worldQuat);
+          frozenWrapper.object3D.position.copy(worldPos);
+          frozenWrapper.object3D.quaternion.copy(worldQuat);
 
-          // dejamos escala fija inicial
+          // El modelo dentro del wrapper conserva escala local
+          frozenCar.object3D.position.set(0, 0, 0);
+          frozenCar.object3D.rotation.set(0, 0, 0);
           frozenCar.object3D.scale.set(5, 5, 5);
-          frozenCar.setAttribute("visible", true);
 
+          frozenWrapper.setAttribute("visible", true);
           trackedCar.setAttribute("visible", false);
 
           alreadyFrozen = true;
@@ -143,8 +147,12 @@
 
         alreadyFrozen = false;
 
-        frozenCar.setAttribute("visible", false);
+        frozenWrapper.setAttribute("visible", false);
         trackedCar.setAttribute("visible", true);
+
+        frozenWrapper.object3D.position.set(0, 0, 0);
+        frozenWrapper.object3D.rotation.set(0, 0, 0);
+        frozenWrapper.object3D.scale.set(1, 1, 1);
 
         frozenCar.object3D.position.set(0, 0, 0);
         frozenCar.object3D.rotation.set(0, 0, 0);
@@ -154,7 +162,7 @@
       });
 
       // =========================
-      // PINCH ZOOM ESTABLE
+      // ZOOM CON DOS DEDOS
       // =========================
       let pinchStartDistance = 0;
       let pinchStartScale = 5;
@@ -165,13 +173,13 @@
         return Math.hypot(dx, dy);
       }
 
-      function clamp(value, min, max) {
-        return Math.max(min, Math.min(max, value));
+      function clamp(v, min, max) {
+        return Math.max(min, Math.min(max, v));
       }
 
       window.addEventListener("touchstart", (e) => {
         if (!alreadyFrozen) return;
-        if (!frozenCar.getAttribute("visible")) return;
+        if (!frozenWrapper.getAttribute("visible")) return;
 
         if (e.touches.length === 2) {
           pinchStartDistance = getDistance(e.touches[0], e.touches[1]);
@@ -181,7 +189,7 @@
 
       window.addEventListener("touchmove", (e) => {
         if (!alreadyFrozen) return;
-        if (!frozenCar.getAttribute("visible")) return;
+        if (!frozenWrapper.getAttribute("visible")) return;
         if (e.touches.length !== 2) return;
 
         e.preventDefault();
@@ -195,13 +203,11 @@
         frozenCar.object3D.scale.set(newScale, newScale, newScale);
       }, { passive: false });
 
-      window.addEventListener("touchend", (e) => {
-        if (e.touches.length < 2) {
-          pinchStartDistance = 0;
-        }
+      window.addEventListener("touchend", () => {
+        pinchStartDistance = 0;
       });
 
-      window.addEventListener("touchcancel", (e) => {
+      window.addEventListener("touchcancel", () => {
         pinchStartDistance = 0;
       });
     </script>

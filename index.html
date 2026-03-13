@@ -70,7 +70,7 @@
           src="#carModel"
           position="0 0 0"
           rotation="0 0 0"
-          scale="5 5 5"
+          scale="1 1 1"
         ></a-gltf-model>
       </a-entity>
 
@@ -82,10 +82,93 @@
         rotation="0 0 0"
         scale="1 1 1"
         visible="false"
+        pinch-scale="min: 0.3; max: 8; speed: 0.01"
       ></a-gltf-model>
     </a-scene>
 
     <script>
+      AFRAME.registerComponent("pinch-scale", {
+        schema: {
+          min: { type: "number", default: 0.3 },
+          max: { type: "number", default: 8 },
+          speed: { type: "number", default: 0.01 }
+        },
+
+        init: function () {
+          this.pointers = new Map();
+          this.startDistance = 0;
+          this.startScale = null;
+
+          this.onTouchStart = this.onTouchStart.bind(this);
+          this.onTouchMove = this.onTouchMove.bind(this);
+          this.onTouchEnd = this.onTouchEnd.bind(this);
+
+          window.addEventListener("touchstart", this.onTouchStart, { passive: false });
+          window.addEventListener("touchmove", this.onTouchMove, { passive: false });
+          window.addEventListener("touchend", this.onTouchEnd, { passive: false });
+          window.addEventListener("touchcancel", this.onTouchEnd, { passive: false });
+        },
+
+        remove: function () {
+          window.removeEventListener("touchstart", this.onTouchStart);
+          window.removeEventListener("touchmove", this.onTouchMove);
+          window.removeEventListener("touchend", this.onTouchEnd);
+          window.removeEventListener("touchcancel", this.onTouchEnd);
+        },
+
+        getDistance: function (t1, t2) {
+          const dx = t2.clientX - t1.clientX;
+          const dy = t2.clientY - t1.clientY;
+          return Math.hypot(dx, dy);
+        },
+
+        clamp: function (v, min, max) {
+          return Math.max(min, Math.min(max, v));
+        },
+
+        onTouchStart: function (e) {
+          if (!this.el.getAttribute("visible")) return;
+
+          if (e.touches.length === 2) {
+            const t1 = e.touches[0];
+            const t2 = e.touches[1];
+
+            this.startDistance = this.getDistance(t1, t2);
+
+            const s = this.el.getAttribute("scale");
+            this.startScale = { x: s.x, y: s.y, z: s.z };
+          }
+        },
+
+        onTouchMove: function (e) {
+          if (!this.el.getAttribute("visible")) return;
+          if (e.touches.length !== 2) return;
+
+          e.preventDefault();
+
+          const t1 = e.touches[0];
+          const t2 = e.touches[1];
+          const currentDistance = this.getDistance(t1, t2);
+
+          if (!this.startDistance || !this.startScale) return;
+
+          const delta = (currentDistance - this.startDistance) * this.data.speed;
+
+          const newX = this.clamp(this.startScale.x + delta, this.data.min, this.data.max);
+          const newY = this.clamp(this.startScale.y + delta, this.data.min, this.data.max);
+          const newZ = this.clamp(this.startScale.z + delta, this.data.min, this.data.max);
+
+          this.el.setAttribute("scale", `${newX} ${newY} ${newZ}`);
+        },
+
+        onTouchEnd: function (e) {
+          if (e.touches.length < 2) {
+            this.startDistance = 0;
+            this.startScale = null;
+          }
+        }
+      });
+
       const anchor = document.querySelector("#targetAnchor");
       const trackedCar = document.querySelector("#trackedCar");
       const frozenCar = document.querySelector("#frozenCar");
@@ -123,7 +206,7 @@
           trackedCar.setAttribute("visible", false);
 
           alreadyFrozen = true;
-          msg.textContent = "Carro fijado";
+          msg.textContent = "Carro fijado. Usa dos dedos para zoom.";
         }, 300);
       });
 

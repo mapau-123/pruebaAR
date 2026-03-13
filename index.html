@@ -1,10 +1,9 @@
 <!doctype html>
 <html>
   <head>
-    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <meta charset="utf-8" />
-
-    <script src="https://aframe.io/releases/1.7.0/aframe.min.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
 
     <style>
       html, body {
@@ -12,572 +11,104 @@
         overflow: hidden;
         width: 100%;
         height: 100%;
-        background: #000;
       }
 
-      body {
-        touch-action: none;
-        font-family: Arial, sans-serif;
-      }
-
-      /* Overlay principal UI */
-      #ui {
+      #msg {
         position: fixed;
-        inset: 0;
-        pointer-events: none;
-        z-index: 10000;
-      }
-
-      .btn {
-        pointer-events: auto;
-        touch-action: manipulation;
-        border: 0;
-        border-radius: 12px;
-        padding: 12px 14px;
-        font-size: 16px;
-        cursor: pointer;
-        background: rgba(255,255,255,0.92);
-        box-shadow: 0 4px 14px rgba(0,0,0,0.2);
-      }
-
-      #topBar {
-        position: fixed;
-        top: 14px;
+        top: 16px;
         left: 50%;
         transform: translateX(-50%);
-        display: flex;
-        gap: 10px;
-        pointer-events: none;
-      }
-
-      #status {
-        pointer-events: none;
-        background: rgba(0,0,0,0.58);
-        color: #fff;
+        z-index: 10;
+        background: rgba(0,0,0,0.6);
+        color: white;
         padding: 10px 14px;
-        border-radius: 12px;
+        border-radius: 10px;
+        font-family: Arial, sans-serif;
         font-size: 14px;
-        text-align: center;
-      }
-
-      #enterAR {
-        pointer-events: auto;
-      }
-
-      /* D-pad */
-      #dpad {
-        position: fixed;
-        left: 16px;
-        bottom: 16px;
-        display: grid;
-        grid-template-columns: 56px 56px 56px;
-        grid-template-rows: 56px 56px 56px;
-        gap: 10px;
-        pointer-events: none;
-      }
-
-      #dpad .btn {
-        width: 56px;
-        height: 56px;
-        padding: 0;
-        font-size: 22px;
-      }
-
-      /* Panel derecho */
-      #rightPanel {
-        position: fixed;
-        right: 16px;
-        bottom: 16px;
-        display: flex;
-        flex-direction: column;
-        gap: 10px;
-        pointer-events: none;
-      }
-
-      #rightPanel .btn {
-        min-width: 130px;
-      }
-
-      /* Overlay YouTube */
-      #ytOverlay {
-        position: fixed;
-        inset: 0;
-        display: none;
-        align-items: center;
-        justify-content: center;
-        background: rgba(0,0,0,0.65);
-        z-index: 11000;
-        pointer-events: none;
-      }
-
-      #ytOverlay.show {
-        display: flex;
-        pointer-events: auto;
       }
     </style>
   </head>
 
   <body>
-    <div id="ui">
-      <div id="topBar">
-        <div id="status">Pulsa “Entrar en AR” para abrir la cámara</div>
-        <button id="enterAR" class="btn">Entrar en AR</button>
-      </div>
-
-      <div id="dpad">
-        <div></div>
-        <button id="btnFwd" class="btn">↑</button>
-        <div></div>
-
-        <button id="btnLeft" class="btn">←</button>
-        <div></div>
-        <button id="btnRight" class="btn">→</button>
-
-        <div></div>
-        <button id="btnBack" class="btn">↓</button>
-        <div></div>
-      </div>
-
-      <div id="rightPanel">
-        <button id="btnRotL" class="btn">Girar ⟲</button>
-        <button id="btnRotR" class="btn">Girar ⟳</button>
-        <button id="btnReset" class="btn">Recentrar</button>
-        <button id="btnVideo" class="btn">Video</button>
-      </div>
-    </div>
+    <div id="msg">Escanea el target...</div>
 
     <a-scene
-      id="scene"
-      embedded
+      mindar-image="imageTargetSrc: ./target.mind; autoStart: true; uiScanning: true; uiLoading: true; uiError: true;"
+      color-space="sRGB"
+      renderer="colorManagement: true, physicallyCorrectLights"
       vr-mode-ui="enabled: false"
-      xr-mode-ui="enabled: true; XRMode: ar; enterARButton: #enterAR;"
       device-orientation-permission-ui="enabled: false"
-      renderer="antialias: true; alpha: true; logarithmicDepthBuffer: false;"
-      webxr="requiredFeatures: local; optionalFeatures: dom-overlay; overlayElement: #ui;"
     >
-      <a-assets>
-        <a-asset-item id="carModel" src="./modcarro.glb"></a-asset-item>
-      </a-assets>
-
       <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
 
-      <!-- Rig principal del carro -->
-      <a-entity id="carRig" visible="false" position="0 0 -1.5" rotation="0 0 0">
-        <a-gltf-model
-          id="modelo"
-          src="#carModel"
-          position="0 -0.2 0"
-          rotation="0 0 0"
-          scale="0.35 0.35 0.35"
-          gesture-controls="tapaName: tapa_v31; tapaAxis: x; tapaMinDeg: 0; tapaMaxDeg: 180; tapaDegPerPx: 0.5;"
-        ></a-gltf-model>
+      <!-- Anchor que sigue al target -->
+      <a-entity id="targetAnchor" mindar-image-target="targetIndex: 0">
+        <a-box
+          id="trackedCube"
+          position="0 0 0"
+          depth="0.3"
+          height="0.3"
+          width="0.3"
+          color="red"
+        ></a-box>
       </a-entity>
+
+      <!-- Cubo congelado, independiente del target -->
+      <a-box
+        id="frozenCube"
+        position="0 0 0"
+        depth="0.3"
+        height="0.3"
+        width="0.3"
+        color="blue"
+        visible="false"
+      ></a-box>
     </a-scene>
 
-    <div id="ytOverlay" aria-hidden="true">
-      <div style="width:min(92vw,900px); aspect-ratio:16/9; background:#000; border-radius:14px; overflow:hidden;">
-        <iframe
-          id="ytFrame"
-          width="100%"
-          height="100%"
-          frameborder="0"
-          allow="autoplay; encrypted-media; picture-in-picture"
-          allowfullscreen
-        ></iframe>
-      </div>
-
-      <button id="ytClose" type="button" class="btn" style="position:fixed; top:16px; right:16px;">
-        Cerrar ✕
-      </button>
-    </div>
-
     <script>
-      AFRAME.registerComponent("gesture-controls", {
-        schema: {
-          zoomSpeed: { type: "number", default: 0.0025 },
-          minScale:  { type: "number", default: 0.2 },
-          maxScale:  { type: "number", default: 4.0 },
+      const anchor = document.querySelector("#targetAnchor");
+      const trackedCube = document.querySelector("#trackedCube");
+      const frozenCube = document.querySelector("#frozenCube");
+      const msg = document.querySelector("#msg");
 
-          rotateSpeed: { type: "number", default: 0.008 },
-          minMovePx:   { type: "number", default: 1 },
+      let alreadyFrozen = false;
 
-          tapaName:     { type: "string", default: "tapa_v31" },
-          tapaAxis:     { type: "string", default: "x" },
-          tapaMinDeg:   { type: "number", default: 0 },
-          tapaMaxDeg:   { type: "number", default: 180 },
-          tapaDegPerPx: { type: "number", default: 0.5 }
-        },
+      anchor.addEventListener("targetFound", () => {
+        msg.textContent = "Target detectado";
 
-        init: function () {
-          this.canvas = null;
-          this.camera = null;
-          this.pointers = new Map();
+        if (alreadyFrozen) return;
 
-          this.isPinching = false;
-          this.isRotating = false;
+        // Esperamos un poquito para que la pose se estabilice
+        setTimeout(() => {
+          anchor.object3D.updateMatrixWorld(true);
 
-          this.draggingPart = null;
-          this.tapaAngleDeg = 0;
-          this.tapaStartAngleDeg = 0;
-
-          this.tapaIntent = null;
-          this.tapaAccumPx = 0;
-          this.tapaLastX = 0;
-          this.tapaLastY = 0;
-
-          this.modelRoot = null;
-          this.tapaObj = null;
-
-          this.raycaster = new THREE.Raycaster();
-          this.ndc = new THREE.Vector2();
-
-          this.prevDist = 0;
-          this.prevX = 0;
-
-          this.onPointerDown = this.onPointerDown.bind(this);
-          this.onPointerMove = this.onPointerMove.bind(this);
-          this.onPointerUp   = this.onPointerUp.bind(this);
-
-          this.el.addEventListener("model-loaded", () => {
-            this.modelRoot = this.el.object3D;
-            this.tapaObj = this.modelRoot.getObjectByName(this.data.tapaName);
-            if (this.tapaObj) console.log("✅ Tapa encontrada:", this.data.tapaName);
-            else console.warn("⚠️ No encontré la tapa con nombre:", this.data.tapaName);
-          });
-
-          const waitForCanvas = () => {
-            const scene = this.el.sceneEl;
-            if (scene && scene.renderer && scene.renderer.domElement && scene.camera) {
-              this.canvas = scene.renderer.domElement;
-              this.camera = scene.camera;
-
-              this.canvas.style.touchAction = "none";
-
-              this.canvas.addEventListener("pointerdown", this.onPointerDown, { passive: false, capture: true });
-              window.addEventListener("pointermove", this.onPointerMove, { passive: false, capture: true });
-              window.addEventListener("pointerup", this.onPointerUp, { passive: false, capture: true });
-              window.addEventListener("pointercancel", this.onPointerUp, { passive: false, capture: true });
-            } else {
-              setTimeout(waitForCanvas, 100);
-            }
-          };
-          waitForCanvas();
-        },
-
-        clamp: function (v, min, max) { return Math.max(min, Math.min(max, v)); },
-
-        _dist2Pointers: function () {
-          const arr = Array.from(this.pointers.values());
-          if (arr.length < 2) return 0;
-          const dx = arr[1].x - arr[0].x;
-          const dy = arr[1].y - arr[0].y;
-          return Math.hypot(dx, dy);
-        },
-
-        _intersectModel: function (clientX, clientY) {
-          if (!this.canvas || !this.camera || !this.modelRoot) return [];
-          const rect = this.canvas.getBoundingClientRect();
-
-          this.ndc.x = ((clientX - rect.left) / rect.width) * 2 - 1;
-          this.ndc.y = -(((clientY - rect.top) / rect.height) * 2 - 1);
-
-          this.modelRoot.updateMatrixWorld(true);
-          this.raycaster.setFromCamera(this.ndc, this.camera);
-          return this.raycaster.intersectObject(this.modelRoot, true);
-        },
-
-        _hitIsTapa: function (hitObj) {
-          if (!this.tapaObj) return false;
-          let o = hitObj;
-          while (o) {
-            if (o === this.tapaObj) return true;
-            o = o.parent;
-          }
-          return false;
-        },
-
-        _applyTapaAngleDeg: function (deg) {
-          if (!this.tapaObj) return;
-          this.tapaAngleDeg = this.clamp(deg, this.data.tapaMinDeg, this.data.tapaMaxDeg);
-
-          const rad = -THREE.MathUtils.degToRad(this.tapaAngleDeg);
-          const axis = (this.data.tapaAxis || "x").toLowerCase();
-
-          if (axis === "x") this.tapaObj.rotation.x = rad;
-          else if (axis === "y") this.tapaObj.rotation.y = rad;
-          else this.tapaObj.rotation.z = rad;
-        },
-
-        onPointerDown: function (e) {
-          if (e.pointerType !== "touch") return;
-          if (e.cancelable) e.preventDefault();
-          try { this.canvas && this.canvas.setPointerCapture(e.pointerId); } catch (_) {}
-
-          this.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
-
-          if (this.pointers.size === 2) {
-            this.isPinching = true;
-            this.isRotating = false;
-            this.draggingPart = null;
-            this.prevDist = this._dist2Pointers();
-            return;
-          }
-
-          if (this.pointers.size === 1) {
-            const hits = this._intersectModel(e.clientX, e.clientY);
-            const touchedTapa = hits.length > 0 && this._hitIsTapa(hits[0].object);
-
-            if (touchedTapa) {
-              this.draggingPart = "tapa";
-              this.isRotating = false;
-              this.isPinching = false;
-
-              const mid = (this.data.tapaMinDeg + this.data.tapaMaxDeg) / 2;
-              this.tapaIntent = (this.tapaAngleDeg >= mid) ? "close" : "open";
-
-              this.tapaStartAngleDeg = this.tapaAngleDeg;
-              this.tapaAccumPx = 0;
-              this.tapaLastX = e.clientX;
-              this.tapaLastY = e.clientY;
-              return;
-            }
-
-            this.draggingPart = null;
-            this.isRotating = true;
-            this.isPinching = false;
-            this.prevX = e.clientX;
-          }
-        },
-
-        onPointerMove: function (e) {
-          if (e.pointerType !== "touch") return;
-          if (!this.pointers.has(e.pointerId)) return;
-          if (e.cancelable) e.preventDefault();
-
-          this.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
-
-          if (this.isPinching && this.pointers.size === 2) {
-            const dist = this._dist2Pointers();
-            const delta = dist - this.prevDist;
-            this.prevDist = dist;
-
-            const factor = 1 + (delta * this.data.zoomSpeed);
-            const s = this.el.getAttribute("scale") || { x: 1, y: 1, z: 1 };
-
-            const nx = this.clamp(s.x * factor, this.data.minScale, this.data.maxScale);
-            const ny = this.clamp(s.y * factor, this.data.minScale, this.data.maxScale);
-            const nz = this.clamp(s.z * factor, this.data.minScale, this.data.maxScale);
-
-            this.el.setAttribute("scale", { x: nx, y: ny, z: nz });
-            return;
-          }
-
-          if (this.draggingPart === "tapa" && this.pointers.size === 1) {
-            const dx = e.clientX - this.tapaLastX;
-            const dy = e.clientY - this.tapaLastY;
-
-            this.tapaLastX = e.clientX;
-            this.tapaLastY = e.clientY;
-
-            const step = Math.hypot(dx, dy);
-            if (step < 0.5) return;
-
-            const mid = (this.data.tapaMinDeg + this.data.tapaMaxDeg) / 2;
-
-            if (this.tapaIntent === "open") {
-              this.tapaAccumPx += step;
-              const deltaDeg = this.tapaAccumPx * this.data.tapaDegPerPx;
-              this._applyTapaAngleDeg(this.tapaStartAngleDeg + deltaDeg);
-              return;
-            }
-
-            const inTopHalf = this.tapaAngleDeg > mid;
-            const expectsUp = inTopHalf;
-            const goingUp = dy < 0;
-            const goingDown = dy > 0;
-
-            let advancePx = 0;
-            if (expectsUp && goingUp) advancePx = step;
-            if (!expectsUp && goingDown) advancePx = step;
-            if (advancePx <= 0) return;
-
-            this.tapaAccumPx += advancePx;
-
-            const deltaDeg = this.tapaAccumPx * this.data.tapaDegPerPx;
-            const candidate = this.tapaStartAngleDeg - deltaDeg;
-
-            if (this.tapaStartAngleDeg > mid && candidate <= mid) {
-              this._applyTapaAngleDeg(mid);
-              this.tapaStartAngleDeg = mid;
-              this.tapaAccumPx = 0;
-              return;
-            }
-
-            this._applyTapaAngleDeg(candidate);
-            return;
-          }
-
-          if (this.isRotating && this.pointers.size === 1) {
-            const dx = e.clientX - this.prevX;
-            if (Math.abs(dx) < this.data.minMovePx) return;
-            this.prevX = e.clientX;
-            this.el.object3D.rotation.y += dx * this.data.rotateSpeed;
-          }
-        },
-
-        onPointerUp: function (e) {
-          if (e.pointerType !== "touch") return;
-          if (e.cancelable) e.preventDefault();
-
-          this.pointers.delete(e.pointerId);
-
-          if (this.pointers.size === 2) {
-            this.isPinching = true;
-            this.isRotating = false;
-            this.draggingPart = null;
-            this.prevDist = this._dist2Pointers();
-            return;
-          }
-
-          this.isPinching = false;
-          this.isRotating = false;
-          this.draggingPart = null;
-          this.prevDist = 0;
-
-          this.tapaAccumPx = 0;
-          this.tapaIntent = null;
-        }
-      });
-    </script>
-
-    <script>
-      document.addEventListener("DOMContentLoaded", async () => {
-        const scene = document.getElementById("scene");
-        const cameraEl = scene.camera && scene.camera.el
-          ? scene.camera.el
-          : document.querySelector("a-camera");
-        const carRig = document.getElementById("carRig");
-        const status = document.getElementById("status");
-
-        const step = 0.08;
-        const rotStep = 0.18;
-        let arStarted = false;
-
-        function setStatus(text) {
-          status.textContent = text;
-        }
-
-        function placeCarInFrontOfCamera(distance = 1.5) {
-          const camObj = cameraEl.object3D;
           const worldPos = new THREE.Vector3();
-          const worldDir = new THREE.Vector3();
+          const worldQuat = new THREE.Quaternion();
+          const worldScale = new THREE.Vector3();
 
-          camObj.getWorldPosition(worldPos);
-          camObj.getWorldDirection(worldDir);
+          trackedCube.object3D.getWorldPosition(worldPos);
+          trackedCube.object3D.getWorldQuaternion(worldQuat);
+          trackedCube.object3D.getWorldScale(worldScale);
 
-          const targetPos = worldPos.clone().add(worldDir.multiplyScalar(distance));
-          targetPos.y -= 0.35;
+          frozenCube.object3D.position.copy(worldPos);
+          frozenCube.object3D.quaternion.copy(worldQuat);
+          frozenCube.object3D.scale.copy(worldScale);
+          frozenCube.setAttribute("visible", true);
 
-          const yaw = camObj.rotation.y;
+          // Ocultamos el cubo ligado al target
+          trackedCube.setAttribute("visible", false);
 
-          carRig.object3D.position.copy(targetPos);
-          carRig.object3D.rotation.set(0, yaw, 0);
-          carRig.setAttribute("visible", "true");
+          alreadyFrozen = true;
+          msg.textContent = "Cubo fijado";
+        }, 300);
+      });
+
+      anchor.addEventListener("targetLost", () => {
+        if (!alreadyFrozen) {
+          msg.textContent = "Target perdido";
+        } else {
+          msg.textContent = "Cubo sigue visible";
         }
-
-        scene.addEventListener("loaded", async () => {
-          if (!navigator.xr) {
-            setStatus("Este navegador no soporta WebXR.");
-            return;
-          }
-
-          try {
-            const ok = await navigator.xr.isSessionSupported("immersive-ar");
-            if (!ok) {
-              setStatus("Este dispositivo/navegador no soporta AR inmersiva.");
-            } else {
-              setStatus("Pulsa “Entrar en AR” para abrir la cámara.");
-            }
-          } catch (err) {
-            console.warn(err);
-            setStatus("No se pudo verificar soporte WebXR.");
-          }
-        });
-
-        scene.addEventListener("enter-vr", () => {
-          if (!scene.is("ar-mode")) return;
-
-          arStarted = true;
-          setStatus("AR activa. El carro fue colocado frente a ti.");
-          setTimeout(() => {
-            placeCarInFrontOfCamera(1.5);
-          }, 250);
-        });
-
-        scene.addEventListener("exit-vr", () => {
-          arStarted = false;
-          carRig.setAttribute("visible", "false");
-          setStatus("Saliste de AR.");
-        });
-
-        function moveRelative(localX, localZ) {
-          if (!arStarted || !carRig.getAttribute("visible")) return;
-
-          const yaw = carRig.object3D.rotation.y;
-          const cos = Math.cos(yaw);
-          const sin = Math.sin(yaw);
-
-          const worldX = localX * cos - localZ * sin;
-          const worldZ = localX * sin + localZ * cos;
-
-          carRig.object3D.position.x += worldX;
-          carRig.object3D.position.z += worldZ;
-        }
-
-        document.getElementById("btnFwd").addEventListener("click", () => moveRelative(0, -step));
-        document.getElementById("btnBack").addEventListener("click", () => moveRelative(0, step));
-        document.getElementById("btnLeft").addEventListener("click", () => moveRelative(-step, 0));
-        document.getElementById("btnRight").addEventListener("click", () => moveRelative(step, 0));
-
-        document.getElementById("btnRotL").addEventListener("click", () => {
-          if (!arStarted || !carRig.getAttribute("visible")) return;
-          carRig.object3D.rotation.y += rotStep;
-        });
-
-        document.getElementById("btnRotR").addEventListener("click", () => {
-          if (!arStarted || !carRig.getAttribute("visible")) return;
-          carRig.object3D.rotation.y -= rotStep;
-        });
-
-        document.getElementById("btnReset").addEventListener("click", () => {
-          if (!arStarted) return;
-          placeCarInFrontOfCamera(1.5);
-          setStatus("Carro recentrado frente a la cámara.");
-        });
-
-        const overlay = document.getElementById("ytOverlay");
-        const frame = document.getElementById("ytFrame");
-        const closeBtn = document.getElementById("ytClose");
-        const VIDEO_ID = "0xKeIFzrVuo";
-        const YT_URL = `https://www.youtube-nocookie.com/embed/${VIDEO_ID}?autoplay=1&playsinline=1&rel=0`;
-
-        function openYT() {
-          overlay.classList.add("show");
-          overlay.setAttribute("aria-hidden", "false");
-          frame.src = YT_URL;
-        }
-
-        function closeYT() {
-          frame.src = "";
-          overlay.classList.remove("show");
-          overlay.setAttribute("aria-hidden", "true");
-        }
-
-        document.getElementById("btnVideo").addEventListener("click", openYT);
-        closeBtn.addEventListener("click", closeYT);
-        overlay.addEventListener("click", (e) => {
-          if (e.target === overlay) closeYT();
-        });
       });
     </script>
   </body>

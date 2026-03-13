@@ -1,29 +1,26 @@
 <!doctype html>
 <html>
   <head>
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta charset="utf-8" />
 
-    <!-- A-Frame (subimos a 1.7.0 para ar-hit-test) -->
     <script src="https://aframe.io/releases/1.7.0/aframe.min.js"></script>
 
     <style>
-      html, body { margin: 0; overflow: hidden; }
-      body { touch-action: none; }
-
-      /* Overlay YouTube */
-      #ytOverlay {
-        position: fixed;
-        inset: 0;
-        display: none;
-        align-items: center;
-        justify-content: center;
-        background: rgba(0,0,0,0.65);
-        z-index: 9999;
-        pointer-events: none;
+      html, body {
+        margin: 0;
+        overflow: hidden;
+        width: 100%;
+        height: 100%;
+        background: #000;
       }
-      #ytOverlay.show { display: flex; pointer-events: auto; }
 
-      /* UI */
+      body {
+        touch-action: none;
+        font-family: Arial, sans-serif;
+      }
+
+      /* Overlay principal UI */
       #ui {
         position: fixed;
         inset: 0;
@@ -40,19 +37,31 @@
         font-size: 16px;
         cursor: pointer;
         background: rgba(255,255,255,0.92);
+        box-shadow: 0 4px 14px rgba(0,0,0,0.2);
       }
 
-      #placeHint {
+      #topBar {
         position: fixed;
         top: 14px;
         left: 50%;
         transform: translateX(-50%);
+        display: flex;
+        gap: 10px;
         pointer-events: none;
-        background: rgba(0,0,0,0.55);
+      }
+
+      #status {
+        pointer-events: none;
+        background: rgba(0,0,0,0.58);
         color: #fff;
-        padding: 10px 12px;
+        padding: 10px 14px;
         border-radius: 12px;
         font-size: 14px;
+        text-align: center;
+      }
+
+      #enterAR {
+        pointer-events: auto;
       }
 
       /* D-pad */
@@ -66,9 +75,15 @@
         gap: 10px;
         pointer-events: none;
       }
-      #dpad .btn { width: 56px; height: 56px; padding: 0; }
 
-      /* Botones extra */
+      #dpad .btn {
+        width: 56px;
+        height: 56px;
+        padding: 0;
+        font-size: 22px;
+      }
+
+      /* Panel derecho */
       #rightPanel {
         position: fixed;
         right: 16px;
@@ -78,25 +93,37 @@
         gap: 10px;
         pointer-events: none;
       }
-      #rightPanel .btn { min-width: 120px; }
 
-      /* Reticle (simple) */
-      #reticle {
-        width: 0.22;
-        height: 0.22;
-        border-radius: 999px;
-        border: 2px solid #fff;
-        background: rgba(255,255,255,0.08);
+      #rightPanel .btn {
+        min-width: 130px;
+      }
+
+      /* Overlay YouTube */
+      #ytOverlay {
+        position: fixed;
+        inset: 0;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        background: rgba(0,0,0,0.65);
+        z-index: 11000;
+        pointer-events: none;
+      }
+
+      #ytOverlay.show {
+        display: flex;
+        pointer-events: auto;
       }
     </style>
   </head>
 
   <body>
-    <!-- UI -->
     <div id="ui">
-      <div id="placeHint">Toca la pantalla para colocar el carro</div>
+      <div id="topBar">
+        <div id="status">Pulsa “Entrar en AR” para abrir la cámara</div>
+        <button id="enterAR" class="btn">Entrar en AR</button>
+      </div>
 
-      <!-- D-Pad -->
       <div id="dpad">
         <div></div>
         <button id="btnFwd" class="btn">↑</button>
@@ -114,70 +141,62 @@
       <div id="rightPanel">
         <button id="btnRotL" class="btn">Girar ⟲</button>
         <button id="btnRotR" class="btn">Girar ⟳</button>
+        <button id="btnReset" class="btn">Recentrar</button>
         <button id="btnVideo" class="btn">Video</button>
-        <button id="btnRePlace" class="btn">Reubicar</button>
       </div>
     </div>
 
-    <!-- A-Frame scene WebXR AR + hit-test -->
     <a-scene
       id="scene"
+      embedded
       vr-mode-ui="enabled: false"
+      xr-mode-ui="enabled: true; XRMode: ar; enterARButton: #enterAR;"
       device-orientation-permission-ui="enabled: false"
-      renderer="precision: mediump; antialias: false; alpha: true; logarithmicDepthBuffer: false;"
-      shadow="type: none"
-      webxr="optionalFeatures: hit-test; requiredFeatures: local-floor"
-      ar-hit-test="target:#carRig;"
+      renderer="antialias: true; alpha: true; logarithmicDepthBuffer: false;"
+      webxr="requiredFeatures: local; optionalFeatures: dom-overlay; overlayElement: #ui;"
     >
+      <a-assets>
+        <a-asset-item id="carModel" src="./modcarro.glb"></a-asset-item>
+      </a-assets>
+
       <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
 
-      <!-- Reticle (lo maneja ar-hit-test mientras busca superficies) -->
-      <a-entity id="reticleHolder" ar-hit-test="enabled: true" visible="false">
-        <a-plane id="reticle" rotation="-90 0 0"></a-plane>
-      </a-entity>
-
-      <!-- “Rig” del carro: el objeto que ar-hit-test va a mover/teletransportar -->
-      <a-entity id="carRig" visible="false">
+      <!-- Rig principal del carro -->
+      <a-entity id="carRig" visible="false" position="0 0 -1.5" rotation="0 0 0">
         <a-gltf-model
           id="modelo"
-          src="./modcarro.glb"
-          position="0 0 0"
+          src="#carModel"
+          position="0 -0.2 0"
           rotation="0 0 0"
-          scale="5 5 5"
+          scale="0.35 0.35 0.35"
           gesture-controls="tapaName: tapa_v31; tapaAxis: x; tapaMinDeg: 0; tapaMaxDeg: 180; tapaDegPerPx: 0.5;"
         ></a-gltf-model>
       </a-entity>
     </a-scene>
 
-    <!-- Overlay YouTube -->
     <div id="ytOverlay" aria-hidden="true">
-      <div style="width: min(92vw, 900px); aspect-ratio: 16/9; background: #000; border-radius: 14px; overflow: hidden;">
+      <div style="width:min(92vw,900px); aspect-ratio:16/9; background:#000; border-radius:14px; overflow:hidden;">
         <iframe
           id="ytFrame"
-          width="100%" height="100%"
+          width="100%"
+          height="100%"
           frameborder="0"
           allow="autoplay; encrypted-media; picture-in-picture"
           allowfullscreen
         ></iframe>
       </div>
 
-      <button id="ytClose" type="button" class="btn" style="position: fixed; top: 16px; right: 16px;">
+      <button id="ytClose" type="button" class="btn" style="position:fixed; top:16px; right:16px;">
         Cerrar ✕
       </button>
     </div>
 
-    <!-- =========================
-         gesture-controls (tu lógica de tapa en U intacta)
-         - Sin ejes
-         - Zoom (pinch)
-         - Rotación horizontal del modelo completo
-         ========================= -->
     <script>
       AFRAME.registerComponent("gesture-controls", {
         schema: {
           zoomSpeed: { type: "number", default: 0.0025 },
-          minScale:  { type: "number", default: 0.8 },
-          maxScale:  { type: "number", default: 15.0 },
+          minScale:  { type: "number", default: 0.2 },
+          maxScale:  { type: "number", default: 4.0 },
 
           rotateSpeed: { type: "number", default: 0.008 },
           minMovePx:   { type: "number", default: 1 },
@@ -337,7 +356,6 @@
 
           this.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
 
-          // Zoom (pinch)
           if (this.isPinching && this.pointers.size === 2) {
             const dist = this._dist2Pointers();
             const delta = dist - this.prevDist;
@@ -354,7 +372,6 @@
             return;
           }
 
-          // ===== TU LÓGICA ORIGINAL DE TAPA EN "U" (SIN CAMBIOS) =====
           if (this.draggingPart === "tapa" && this.pointers.size === 1) {
             const dx = e.clientX - this.tapaLastX;
             const dy = e.clientY - this.tapaLastY;
@@ -399,9 +416,7 @@
             this._applyTapaAngleDeg(candidate);
             return;
           }
-          // ===========================================================
 
-          // Rotación horizontal del modelo completo
           if (this.isRotating && this.pointers.size === 1) {
             const dx = e.clientX - this.prevX;
             if (Math.abs(dx) < this.data.minMovePx) return;
@@ -435,78 +450,128 @@
       });
     </script>
 
-    <!-- =========================
-         WebXR: lógica de colocación + flechas + video
-         - Tap para colocar (1 vez), luego deshabilitamos ar-hit-test para que no se teletransporte por accidente
-         - Reubicar vuelve a habilitar hit-test
-         ========================= -->
     <script>
-      document.addEventListener("DOMContentLoaded", () => {
-        const scene = document.querySelector("#scene");
+      document.addEventListener("DOMContentLoaded", async () => {
+        const scene = document.getElementById("scene");
+        const cameraEl = scene.camera && scene.camera.el
+          ? scene.camera.el
+          : document.querySelector("a-camera");
         const carRig = document.getElementById("carRig");
-        const hint = document.getElementById("placeHint");
+        const status = document.getElementById("status");
 
-        const step = 0.06;       // movimiento por toque (metros aprox)
-        const rotStep = 0.15;    // radianes por toque
+        const step = 0.08;
+        const rotStep = 0.18;
+        let arStarted = false;
 
-        let placed = false;
+        function setStatus(text) {
+          status.textContent = text;
+        }
 
-        // Cuando el usuario toca para “seleccionar” superficie, ar-hit-test teleporta el target y lo hace visible. :contentReference[oaicite:1]{index=1}
-        scene.addEventListener("ar-hit-test-select", (e) => {
-          placed = true;
-          hint.style.display = "none";
+        function placeCarInFrontOfCamera(distance = 1.5) {
+          const camObj = cameraEl.object3D;
+          const worldPos = new THREE.Vector3();
+          const worldDir = new THREE.Vector3();
 
-          // Para evitar que nuevos taps lo vuelvan a mover, deshabilitamos hit-test
-          scene.setAttribute("ar-hit-test", "target:#carRig; enabled:false");
+          camObj.getWorldPosition(worldPos);
+          camObj.getWorldDirection(worldDir);
+
+          const targetPos = worldPos.clone().add(worldDir.multiplyScalar(distance));
+          targetPos.y -= 0.35;
+
+          const yaw = camObj.rotation.y;
+
+          carRig.object3D.position.copy(targetPos);
+          carRig.object3D.rotation.set(0, yaw, 0);
+          carRig.setAttribute("visible", "true");
+        }
+
+        scene.addEventListener("loaded", async () => {
+          if (!navigator.xr) {
+            setStatus("Este navegador no soporta WebXR.");
+            return;
+          }
+
+          try {
+            const ok = await navigator.xr.isSessionSupported("immersive-ar");
+            if (!ok) {
+              setStatus("Este dispositivo/navegador no soporta AR inmersiva.");
+            } else {
+              setStatus("Pulsa “Entrar en AR” para abrir la cámara.");
+            }
+          } catch (err) {
+            console.warn(err);
+            setStatus("No se pudo verificar soporte WebXR.");
+          }
         });
 
-        // Reubicar: volver a habilitar hit-test y ocultar rig hasta colocar
-        document.getElementById("btnRePlace").addEventListener("click", () => {
-          placed = false;
-          hint.style.display = "block";
+        scene.addEventListener("enter-vr", () => {
+          if (!scene.is("ar-mode")) return;
+
+          arStarted = true;
+          setStatus("AR activa. El carro fue colocado frente a ti.");
+          setTimeout(() => {
+            placeCarInFrontOfCamera(1.5);
+          }, 250);
+        });
+
+        scene.addEventListener("exit-vr", () => {
+          arStarted = false;
           carRig.setAttribute("visible", "false");
-          scene.setAttribute("ar-hit-test", "target:#carRig; enabled:true");
+          setStatus("Saliste de AR.");
         });
 
-        // Flechas (solo si ya está colocado)
-        const move = (dx, dz) => {
-          if (!placed) return;
-          carRig.object3D.position.x += dx;
-          carRig.object3D.position.z += dz;
-        };
+        function moveRelative(localX, localZ) {
+          if (!arStarted || !carRig.getAttribute("visible")) return;
 
-        document.getElementById("btnFwd").addEventListener("click", () => move(0, -step));
-        document.getElementById("btnBack").addEventListener("click", () => move(0, step));
-        document.getElementById("btnLeft").addEventListener("click", () => move(-step, 0));
-        document.getElementById("btnRight").addEventListener("click", () => move(step, 0));
+          const yaw = carRig.object3D.rotation.y;
+          const cos = Math.cos(yaw);
+          const sin = Math.sin(yaw);
 
-        // Rotación con botones (sobre el rig, no sobre el modelo)
+          const worldX = localX * cos - localZ * sin;
+          const worldZ = localX * sin + localZ * cos;
+
+          carRig.object3D.position.x += worldX;
+          carRig.object3D.position.z += worldZ;
+        }
+
+        document.getElementById("btnFwd").addEventListener("click", () => moveRelative(0, -step));
+        document.getElementById("btnBack").addEventListener("click", () => moveRelative(0, step));
+        document.getElementById("btnLeft").addEventListener("click", () => moveRelative(-step, 0));
+        document.getElementById("btnRight").addEventListener("click", () => moveRelative(step, 0));
+
         document.getElementById("btnRotL").addEventListener("click", () => {
-          if (!placed) return;
+          if (!arStarted || !carRig.getAttribute("visible")) return;
           carRig.object3D.rotation.y += rotStep;
         });
+
         document.getElementById("btnRotR").addEventListener("click", () => {
-          if (!placed) return;
+          if (!arStarted || !carRig.getAttribute("visible")) return;
           carRig.object3D.rotation.y -= rotStep;
         });
 
-        // Video (ya no depende de targets)
+        document.getElementById("btnReset").addEventListener("click", () => {
+          if (!arStarted) return;
+          placeCarInFrontOfCamera(1.5);
+          setStatus("Carro recentrado frente a la cámara.");
+        });
+
         const overlay = document.getElementById("ytOverlay");
         const frame = document.getElementById("ytFrame");
         const closeBtn = document.getElementById("ytClose");
         const VIDEO_ID = "0xKeIFzrVuo";
         const YT_URL = `https://www.youtube-nocookie.com/embed/${VIDEO_ID}?autoplay=1&playsinline=1&rel=0`;
 
-        const openYT = () => {
+        function openYT() {
           overlay.classList.add("show");
-          frame.src = YT_URL;
           overlay.setAttribute("aria-hidden", "false");
-        };
-        const closeYT = () => {
+          frame.src = YT_URL;
+        }
+
+        function closeYT() {
           frame.src = "";
           overlay.classList.remove("show");
           overlay.setAttribute("aria-hidden", "true");
-        };
+        }
 
         document.getElementById("btnVideo").addEventListener("click", openYT);
         closeBtn.addEventListener("click", closeYT);

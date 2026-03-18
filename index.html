@@ -27,7 +27,7 @@
         font-size: 14px;
       }
 
-      #btnReset {
+      #btnChange {
         position: fixed;
         bottom: 20px;
         right: 20px;
@@ -45,7 +45,7 @@
 
   <body>
     <div id="msg">Escanea el target...</div>
-    <button id="btnReset">Desanclar</button>
+    <button id="btnChange">Cambiar modelo</button>
 
     <a-scene
       mindar-image="imageTargetSrc: ./target.mind; autoStart: true; uiScanning: true; uiLoading: true; uiError: true;"
@@ -55,7 +55,8 @@
       device-orientation-permission-ui="enabled: false"
     >
       <a-assets>
-        <a-asset-item id="carModel" src="./modcarro.glb"></a-asset-item>
+        <a-asset-item id="model1" src="./silbon.glb"></a-asset-item>
+        <a-asset-item id="model2" src="./raton.glb"></a-asset-item>
       </a-assets>
 
       <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
@@ -63,152 +64,59 @@
       <a-light type="ambient" intensity="1"></a-light>
       <a-light type="directional" intensity="1" position="1 2 1"></a-light>
 
-      <!-- Modelo ligado al target -->
       <a-entity id="targetAnchor" mindar-image-target="targetIndex: 0">
         <a-gltf-model
-          id="trackedCar"
-          src="#carModel"
+          id="car1"
+          src="#model1"
           position="0 0 0"
           rotation="0 0 0"
           scale="5 5 5"
+          visible="true"
         ></a-gltf-model>
-      </a-entity>
 
-      <!-- Wrapper congelado -->
-      <a-entity id="frozenWrapper" visible="false">
         <a-gltf-model
-          id="frozenCar"
-          src="#carModel"
+          id="car2"
+          src="#model2"
           position="0 0 0"
           rotation="0 0 0"
           scale="5 5 5"
+          visible="false"
         ></a-gltf-model>
       </a-entity>
     </a-scene>
 
     <script>
       const anchor = document.querySelector("#targetAnchor");
-      const trackedCar = document.querySelector("#trackedCar");
-      const frozenWrapper = document.querySelector("#frozenWrapper");
-      const frozenCar = document.querySelector("#frozenCar");
+      const car1 = document.querySelector("#car1");
+      const car2 = document.querySelector("#car2");
+      const btnChange = document.querySelector("#btnChange");
       const msg = document.querySelector("#msg");
-      const btnReset = document.querySelector("#btnReset");
 
-      let alreadyFrozen = false;
-      let freezeTimeout = null;
+      let showingFirst = true;
+      let targetVisible = false;
 
-      // =========================
-      // ANCLAR / CONGELAR
-      // =========================
       anchor.addEventListener("targetFound", () => {
-        if (alreadyFrozen) return;
-
+        targetVisible = true;
         msg.textContent = "Target detectado";
-
-        clearTimeout(freezeTimeout);
-        freezeTimeout = setTimeout(() => {
-          if (alreadyFrozen) return;
-
-          anchor.object3D.updateMatrixWorld(true);
-          trackedCar.object3D.updateMatrixWorld(true);
-
-          const worldPos = new THREE.Vector3();
-          const worldQuat = new THREE.Quaternion();
-
-          trackedCar.object3D.getWorldPosition(worldPos);
-          trackedCar.object3D.getWorldQuaternion(worldQuat);
-
-          frozenWrapper.object3D.position.copy(worldPos);
-          frozenWrapper.object3D.quaternion.copy(worldQuat);
-
-          // El modelo dentro del wrapper conserva escala local
-          frozenCar.object3D.position.set(0, 0, 0);
-          frozenCar.object3D.rotation.set(0, 0, 0);
-          frozenCar.object3D.scale.set(5, 5, 5);
-
-          frozenWrapper.setAttribute("visible", true);
-          trackedCar.setAttribute("visible", false);
-
-          alreadyFrozen = true;
-          msg.textContent = "Carro fijado. Usa dos dedos para zoom.";
-        }, 300);
       });
 
       anchor.addEventListener("targetLost", () => {
-        if (!alreadyFrozen) {
-          msg.textContent = "Target perdido";
-        } else {
-          msg.textContent = "Carro sigue visible";
+        targetVisible = false;
+        msg.textContent = "Target perdido";
+      });
+
+      btnChange.addEventListener("click", () => {
+        if (!targetVisible) {
+          msg.textContent = "Primero escanea el target";
+          return;
         }
-      });
 
-      btnReset.addEventListener("click", () => {
-        clearTimeout(freezeTimeout);
+        showingFirst = !showingFirst;
 
-        alreadyFrozen = false;
+        car1.setAttribute("visible", showingFirst);
+        car2.setAttribute("visible", !showingFirst);
 
-        frozenWrapper.setAttribute("visible", false);
-        trackedCar.setAttribute("visible", true);
-
-        frozenWrapper.object3D.position.set(0, 0, 0);
-        frozenWrapper.object3D.rotation.set(0, 0, 0);
-        frozenWrapper.object3D.scale.set(1, 1, 1);
-
-        frozenCar.object3D.position.set(0, 0, 0);
-        frozenCar.object3D.rotation.set(0, 0, 0);
-        frozenCar.object3D.scale.set(5, 5, 5);
-
-        msg.textContent = "Escanea el target de nuevo";
-      });
-
-      // =========================
-      // ZOOM CON DOS DEDOS
-      // =========================
-      let pinchStartDistance = 0;
-      let pinchStartScale = 5;
-
-      function getDistance(t1, t2) {
-        const dx = t2.clientX - t1.clientX;
-        const dy = t2.clientY - t1.clientY;
-        return Math.hypot(dx, dy);
-      }
-
-      function clamp(v, min, max) {
-        return Math.max(min, Math.min(max, v));
-      }
-
-      window.addEventListener("touchstart", (e) => {
-        if (!alreadyFrozen) return;
-        if (!frozenWrapper.getAttribute("visible")) return;
-
-        if (e.touches.length === 2) {
-          pinchStartDistance = getDistance(e.touches[0], e.touches[1]);
-          pinchStartScale = frozenCar.object3D.scale.x;
-        }
-      }, { passive: false });
-
-      window.addEventListener("touchmove", (e) => {
-        if (!alreadyFrozen) return;
-        if (!frozenWrapper.getAttribute("visible")) return;
-        if (e.touches.length !== 2) return;
-
-        e.preventDefault();
-
-        const currentDistance = getDistance(e.touches[0], e.touches[1]);
-        if (!pinchStartDistance) return;
-
-        const ratio = currentDistance / pinchStartDistance;
-        const newScale = clamp(pinchStartScale * ratio, 1, 20);
-
-        frozenCar.object3D.scale.set(newScale, newScale, newScale);
-      }, { passive: false });
-
-      window.addEventListener("touchend", () => {
-        pinchStartDistance = 0;
-      });
-
-      window.addEventListener("touchcancel", () => {
-        pinchStartDistance = 0;
+        msg.textContent = showingFirst ? "Modelo 1 activo" : "Modelo 2 activo";
       });
     </script>
   </body>
